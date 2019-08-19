@@ -11,30 +11,30 @@ var (
 // LRU .
 // TODO: goroutine safe
 type LRU struct {
-	size        uint                          // max size
-	cache       *list.List                    // doubly linked list
-	itemRecords map[interface{}]*list.Element // item map, get faster
-	onEvict     EvictCallback                 // callback func
+	size       uint                          // max size
+	cache      *list.List                    // doubly linked list
+	cacheItems map[interface{}]*list.Element // item map, get faster
+	onEvict    EvictCallback                 // callback func
 }
 
 // NewLRU constructs an LRU of the given size
 func NewLRU(size uint, onEvict EvictCallback) (*LRU, error) {
 	c := &LRU{
-		size:        size,
-		cache:       list.New(),
-		itemRecords: make(map[interface{}]*list.Element),
-		onEvict:     onEvict,
+		size:       size,
+		cache:      list.New(),
+		cacheItems: make(map[interface{}]*list.Element),
+		onEvict:    onEvict,
 	}
 	return c, nil
 }
 
 // Purge is used to completely clear the cache.
 func (c *LRU) Purge() {
-	for k, v := range c.itemRecords {
+	for k, v := range c.cacheItems {
 		if c.onEvict != nil {
 			c.onEvict(k, v.Value.(*entry).Value)
 		}
-		delete(c.itemRecords, k)
+		delete(c.cacheItems, k)
 	}
 	c.cache.Init()
 }
@@ -42,7 +42,7 @@ func (c *LRU) Purge() {
 // Put adds a value to the cache.  Returns true if an eviction occurred.
 func (c *LRU) Put(key, value interface{}) (evicted bool) {
 	// Check for existing item
-	if item, ok := c.itemRecords[key]; ok {
+	if item, ok := c.cacheItems[key]; ok {
 		c.cache.MoveToFront(item)
 		item.Value.(*entry).Value = value
 		return false
@@ -51,7 +51,7 @@ func (c *LRU) Put(key, value interface{}) (evicted bool) {
 	// Add new item
 	ent := &entry{key, value}
 	item := c.cache.PushFront(ent)
-	c.itemRecords[key] = item
+	c.cacheItems[key] = item
 
 	// Verify size not exceeded
 	if evicted = c.cache.Len() > int(c.size); evicted {
@@ -63,7 +63,7 @@ func (c *LRU) Put(key, value interface{}) (evicted bool) {
 
 // Get looks up a key's value from the cache.
 func (c *LRU) Get(key interface{}) (value interface{}, ok bool) {
-	if item, ok := c.itemRecords[key]; ok {
+	if item, ok := c.cacheItems[key]; ok {
 		c.cache.MoveToFront(item)
 		// if item.Value.(*entry) == nil {
 		// 	return nil, false
@@ -77,7 +77,7 @@ func (c *LRU) Get(key interface{}) (value interface{}, ok bool) {
 // the "recently used"-ness of the key.
 func (c *LRU) Peek(key interface{}) (value interface{}, ok bool) {
 	var item *list.Element
-	if item, ok = c.itemRecords[key]; ok {
+	if item, ok = c.cacheItems[key]; ok {
 		return item.Value.(*entry).Value, true
 	}
 	return nil, ok
@@ -86,27 +86,27 @@ func (c *LRU) Peek(key interface{}) (value interface{}, ok bool) {
 // Remove removes the provided key from the cache, returning if the
 // key was contained.
 func (c *LRU) Remove(key interface{}) (present bool) {
-	if item, ok := c.itemRecords[key]; ok {
+	if item, ok := c.cacheItems[key]; ok {
 		c.removeElement(item)
 		return true
 	}
 	return false
 }
 
-// RemoveOldest removes the oldest item from the cache.
-func (c *LRU) RemoveOldest() (key interface{}, value interface{}, ok bool) {
-	item := c.cache.Back()
-	if item != nil {
-		c.removeElement(item)
-		ent := item.Value.(*entry)
-		return ent.Key, ent.Value, true
-	}
-	return nil, nil, false
-}
+// // RemoveOldest removes the oldest item from the cache.
+// func (c *LRU) RemoveOldest() (key interface{}, value interface{}, ok bool) {
+// 	item := c.cache.Back()
+// 	if item != nil {
+// 		c.removeElement(item)
+// 		ent := item.Value.(*entry)
+// 		return ent.Key, ent.Value, true
+// 	}
+// 	return nil, nil, false
+// }
 
 // Keys returns a slice of the keys in the cache, from oldest to newest.
 func (c *LRU) Keys() []interface{} {
-	keys := make([]interface{}, len(c.itemRecords))
+	keys := make([]interface{}, len(c.cacheItems))
 	i := 0
 	for item := c.cache.Back(); item != nil; item = item.Prev() {
 		keys[i] = item.Value.(*entry).Key
@@ -115,7 +115,7 @@ func (c *LRU) Keys() []interface{} {
 	return keys
 }
 
-// Len returns the number of itemRecords in the cache.
+// Len returns the number of cacheItems in the cache.
 func (c *LRU) Len() int {
 	return c.cache.Len()
 }
@@ -151,7 +151,7 @@ func (c *LRU) removeOldest() {
 func (c *LRU) removeElement(item *list.Element) {
 	c.cache.Remove(item)
 	ent := item.Value.(*entry)
-	delete(c.itemRecords, ent.Key)
+	delete(c.cacheItems, ent.Key)
 	if c.onEvict != nil {
 		c.onEvict(ent.Key, ent.Value)
 	}

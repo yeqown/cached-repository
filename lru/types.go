@@ -11,6 +11,12 @@ type entry struct {
 	Value interface{}
 }
 
+type historyEntry struct {
+	Key     interface{}
+	Value   interface{}
+	Visited uint
+}
+
 // Cache is the interface for simple LRU cache.
 type Cache interface {
 	// Puts a value to the cache, returns true if an eviction occurred and

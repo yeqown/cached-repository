@@ -1,11 +1,18 @@
 package cachedrepo
 
-// EmbedRepo .
-type EmbedRepo struct {
-	c CacheAlgor
-}
+// // EmbedRepo .
+// type EmbedRepo struct {
+// 	ca CacheAlgor
+// }
 
-// Update .
-func (er *EmbedRepo) Update() {
+// // NewEmbedRepo .
+// func NewEmbedRepo(ca CacheAlgor) *EmbedRepo {
+// 	return &EmbedRepo{
+// 		ca: ca,
+// 	}
+// }
 
-}
+// // Update .
+// func (r *EmbedRepo) Update() {
+
+// }

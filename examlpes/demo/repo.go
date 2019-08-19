@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/jinzhu/gorm"
-	cp "github.com/yeqown/cached-repository"
 )
 
 type userModel struct {
@@ -15,7 +14,7 @@ type userModel struct {
 // MysqlRepo .
 type MysqlRepo struct {
 	db *gorm.DB
-	*cp.EmbedRepo
+	// *cp.EmbedRepo
 }
 
 // GetByID .
