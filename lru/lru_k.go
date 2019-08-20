@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	_ Cache = K{}
+	_ Cache = &K{}
 )
 
 // K . means lru-k
@@ -23,8 +23,8 @@ type K struct {
 	cacheItems map[interface{}]*list.Element // cache get op O(1)
 }
 
-// NewK .
-func NewK(k, size, hSize uint, onEvict EvictCallback) (*K, error) {
+// NewLRUK .
+func NewLRUK(k, size, hSize uint, onEvict EvictCallback) (*K, error) {
 
 	if k < 2 {
 		return nil, errors.New("k is suggested bigger than 1, otherwise using LRU")
@@ -47,17 +47,20 @@ func NewK(k, size, hSize uint, onEvict EvictCallback) (*K, error) {
 }
 
 // Put of K cache add or update
-func (c K) Put(key, value interface{}) (evicted bool) {
+func (c *K) Put(key, value interface{}) (evicted bool) {
 	if item, ok := c.cacheItems[key]; ok {
-		item.Value = value
+		item.Value.(*entry).Value = value
 		c.cache.MoveToFront(item)
 		return
 	}
 
+	// fmt.Println(c.historyItems)
 	// not hit in cache, then add to history
 	var hEnt = new(historyEntry)
 	item, ok := c.historyItems[key]
 	if ok {
+		hEnt = item.Value.(*historyEntry)
+		// fmt.Printf("hit hEnt: %v\n", hEnt)
 		hEnt = item.Value.(*historyEntry)
 		hEnt.Visited++
 		item.Value = hEnt
@@ -66,12 +69,15 @@ func (c K) Put(key, value interface{}) (evicted bool) {
 			c.removeHistoryElement(item)
 			return c.addElement(&entry{Key: key, Value: value})
 		}
+		// refresh history order
+		c.history.MoveToFront(item)
 	} else {
 		// true: not exists
 		hEnt.Key = key
 		hEnt.Value = value
 		hEnt.Visited = 1
 		item = c.addHistoryElement(hEnt)
+		// fmt.Printf("missed hEnt: %v\n", hEnt)
 	}
 	// update history
 	// c.historyItems[key] = item
@@ -80,7 +86,8 @@ func (c K) Put(key, value interface{}) (evicted bool) {
 }
 
 // Get of K cache
-func (c K) Get(key interface{}) (value interface{}, ok bool) {
+func (c *K) Get(key interface{}) (value interface{}, ok bool) {
+	// fmt.Println(c.cacheItems)
 	if item, ok := c.cacheItems[key]; ok {
 		c.cache.MoveToFront(item)
 		return item.Value.(*entry).Value, true
@@ -89,7 +96,7 @@ func (c K) Get(key interface{}) (value interface{}, ok bool) {
 }
 
 // Remove of K cache
-func (c K) Remove(key interface{}) bool {
+func (c *K) Remove(key interface{}) bool {
 	if item, ok := c.cacheItems[key]; ok {
 		c.removeElement(item)
 		return true
@@ -98,7 +105,7 @@ func (c K) Remove(key interface{}) bool {
 }
 
 // Peek of K cache
-func (c K) Peek(key interface{}) (value interface{}, ok bool) {
+func (c *K) Peek(key interface{}) (value interface{}, ok bool) {
 	var item *list.Element
 	if item, ok = c.cacheItems[key]; ok {
 		return item.Value.(*entry).Value, true
@@ -107,7 +114,7 @@ func (c K) Peek(key interface{}) (value interface{}, ok bool) {
 }
 
 // Oldest of K cache
-func (c K) Oldest() (key, value interface{}, ok bool) {
+func (c *K) Oldest() (key, value interface{}, ok bool) {
 	if c.cache == nil || c.cache.Len() == 0 {
 		return nil, nil, false
 	}
@@ -118,7 +125,7 @@ func (c K) Oldest() (key, value interface{}, ok bool) {
 }
 
 // Keys of K cache
-func (c K) Keys() []interface{} {
+func (c *K) Keys() []interface{} {
 	keys := make([]interface{}, len(c.cacheItems))
 	i := 0
 	for item := c.cache.Back(); item != nil; item = item.Prev() {
@@ -129,7 +136,7 @@ func (c K) Keys() []interface{} {
 }
 
 // Len of K cache
-func (c K) Len() int {
+func (c *K) Len() int {
 	if c.cache == nil {
 		return 0
 	}
@@ -137,7 +144,7 @@ func (c K) Len() int {
 }
 
 // Iter of K cache
-func (c K) Iter(f IterFunc) {
+func (c *K) Iter(f IterFunc) {
 	for item := c.cache.Back(); item != nil; item = item.Prev() {
 		ent := item.Value.(*entry)
 		f(ent.Key, ent.Value)
@@ -145,7 +152,7 @@ func (c K) Iter(f IterFunc) {
 }
 
 // Purge of K cache
-func (c K) Purge() {
+func (c *K) Purge() {
 	for k, v := range c.cacheItems {
 		if c.onEvict != nil {
 			c.onEvict(k, v.Value.(*entry).Value)
@@ -160,23 +167,24 @@ func (c K) Purge() {
 	c.history.Init()
 }
 
-func (c K) removeHistoryElement(item *list.Element) {
+func (c *K) removeHistoryElement(item *list.Element) {
 	c.hSize++
 	ent := item.Value.(*historyEntry)
 	c.history.Remove(item)
 	delete(c.historyItems, ent.Key)
 }
 
-func (c K) addHistoryElement(hEnt *historyEntry) *list.Element {
-	if c.size == 0 {
+func (c *K) addHistoryElement(hEnt *historyEntry) *list.Element {
+	if c.hSize == 0 {
 		c.removeHistoryElement(c.history.Back())
 	}
-
-	c.historyItems[hEnt.Key] = c.history.PushFront(hEnt)
-	return c.historyItems[hEnt.Key]
+	c.hSize--
+	item := c.history.PushFront(hEnt)
+	c.historyItems[hEnt.Key] = item
+	return item
 }
 
-func (c K) removeElement(item *list.Element) {
+func (c *K) removeElement(item *list.Element) {
 	c.size++
 	ent := item.Value.(*entry)
 	c.cache.Remove(item)
@@ -186,12 +194,13 @@ func (c K) removeElement(item *list.Element) {
 	}
 }
 
-func (c K) addElement(ent *entry) (evicted bool) {
+func (c *K) addElement(ent *entry) (evicted bool) {
+	// println(c.size)
 	if c.size == 0 {
 		evicted = true
 		c.removeElement(c.cache.Back())
 	}
-
+	c.size--
 	c.cacheItems[ent.Key] = c.cache.PushFront(ent)
 	return
 }
