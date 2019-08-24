@@ -119,7 +119,7 @@ func (repo MysqlRepo) Create(m *userModel) error {
 func (repo MysqlRepo) GetByID(id uint) (*userModel, error) {
 	start := time.Now()
 	defer func() {
-		fmt.Printf("this query cost: %d nano seconds\n", time.Now().Sub(start).Nanoseconds())
+		fmt.Printf("this queryid=%d cost: %d ns\n",id, time.Now().Sub(start).Nanoseconds())
 	}()
 
 	v, ok := repo.calg.Get(id)
@@ -170,63 +170,103 @@ func (repo MysqlRepo) Delete(id uint) error {
 execute `go run main.go`
 
 ```sh
-this query cost: 269226 nano seconds
-this query cost: 133925 nano seconds
-this query cost: 168136 nano seconds
-this query cost: 135615 nano seconds
-this query cost: 141056 nano seconds
-this query cost: 127871 nano seconds
-this query cost: 128350 nano seconds
-this query cost: 127124 nano seconds
-this query cost: 129247 nano seconds
-this query cost: 121573 nano seconds
-this query cost: 456 nano seconds
-this query cost: 442 nano seconds
-this query cost: 117046 nano seconds
-this query cost: 117790 nano seconds
-this query cost: 485 nano seconds
-this query cost: 327 nano seconds
-this query cost: 329 nano seconds
-this query cost: 323 nano seconds
-this query cost: 308 nano seconds
-this query cost: 126181 nano seconds
-this query cost: 461 nano seconds
-this query cost: 399 nano seconds
-this query cost: 344 nano seconds
-this query cost: 3189 nano seconds
-this query cost: 131464 nano seconds
-this query cost: 443 nano seconds
-this query cost: 340 nano seconds
-this query cost: 254 nano seconds
-this query cost: 119095 nano seconds
-this query cost: 114699 nano seconds
-this query cost: 488 nano seconds
-this query cost: 346 nano seconds
-this query cost: 390 nano seconds
-this query cost: 112766 nano seconds
-this query cost: 416 nano seconds
-this query cost: 316 nano seconds
-this query cost: 364 nano seconds
-this query cost: 351 nano seconds
-this query cost: 291 nano seconds
-this query cost: 295 nano seconds
-this query cost: 355 nano seconds
-this query cost: 321 nano seconds
-this query cost: 304 nano seconds
-this query cost: 327 nano seconds
-this query cost: 391 nano seconds
-this query cost: 366 nano seconds
-this query cost: 310 nano seconds
-this query cost: 323 nano seconds
-this query cost: 2603 nano seconds
-this query cost: 304464 nano seconds
-this query cost: 1002 nano seconds
-this query cost: 1174 nano seconds
-this query cost: 1130 nano seconds
-this query cost: 527 nano seconds
-this query cost: 339 nano seconds
-this query cost: 638 nano seconds
-this query cost: 305 nano seconds
-this query cost: 298 nano seconds
-... more ignored
+➜  custom-cache-manage git:(master) ✗ go run main.go 
+this queryid=9 cost: 245505 ns
+this queryid=1 cost: 131838 ns
+this queryid=3 cost: 128272 ns
+this queryid=2 cost: 112281 ns
+this queryid=7 cost: 123942 ns
+this queryid=4 cost: 140267 ns
+this queryid=7 cost: 148814 ns
+this queryid=9 cost: 126904 ns
+this queryid=6 cost: 129676 ns
+this queryid=2 cost: 174202 ns
+this queryid=1 cost: 151673 ns
+this queryid=4 cost: 156370 ns
+this queryid=3 cost: 159285 ns
+this queryid=6 cost: 142215 ns
+this queryid=3 cost: 691 ns
+this queryid=1 cost: 450 ns
+this queryid=8 cost: 160263 ns
+this queryid=5 cost: 149655 ns
+this queryid=4 cost: 756 ns
+this queryid=8 cost: 143363 ns
+this queryid=3 cost: 740 ns
+this queryid=9 cost: 558 ns
+this queryid=2 cost: 476 ns
+this queryid=5 cost: 184098 ns
+this queryid=1 cost: 824 ns
+this queryid=8 cost: 556 ns
+this queryid=9 cost: 632 ns
+this queryid=7 cost: 480 ns
+this queryid=5 cost: 439 ns
+this queryid=5 cost: 409 ns
+this queryid=7 cost: 431 ns
+this queryid=6 cost: 479 ns
+this queryid=4 cost: 423 ns
+this queryid=8 cost: 423 ns
+this queryid=1 cost: 411 ns
+this queryid=6 cost: 423 ns
+this queryid=8 cost: 394 ns
+this queryid=7 cost: 410 ns
+this queryid=9 cost: 424 ns
+this queryid=4 cost: 428 ns
+this queryid=2 cost: 433 ns
+this queryid=4 cost: 420 ns
+this queryid=9 cost: 424 ns
+this queryid=6 cost: 406 ns
+this queryid=6 cost: 399 ns
+this queryid=5 cost: 405 ns
+this queryid=2 cost: 428 ns
+this queryid=9 cost: 383 ns
+this queryid=4 cost: 399 ns
+this queryid=7 cost: 413 ns
+this queryid=4 cost: 381 ns
+this queryid=1 cost: 427 ns
+this queryid=2 cost: 430 ns
+this queryid=1 cost: 468 ns
+this queryid=1 cost: 406 ns
+this queryid=4 cost: 380 ns
+this queryid=2 cost: 360 ns
+this queryid=3 cost: 660 ns
+this queryid=6 cost: 393 ns
+this queryid=5 cost: 419 ns
+this queryid=7 cost: 1254 ns
+this queryid=6 cost: 723 ns
+this queryid=4 cost: 503 ns
+this queryid=8 cost: 448 ns
+this queryid=3 cost: 510 ns
+this queryid=1 cost: 432 ns
+this queryid=2 cost: 999 ns
+this queryid=1 cost: 419 ns
+this queryid=8 cost: 658 ns
+this queryid=9 cost: 1322 ns
+this queryid=9 cost: 543 ns
+this queryid=4 cost: 1311 ns
+this queryid=5 cost: 348 ns
+this queryid=4 cost: 309 ns
+this queryid=5 cost: 350 ns
+this queryid=9 cost: 311 ns
+this queryid=5 cost: 336 ns
+this queryid=3 cost: 567 ns
+this queryid=9 cost: 293 ns
+this queryid=7 cost: 338 ns
+this queryid=4 cost: 499 ns
+this queryid=7 cost: 318 ns
+this queryid=3 cost: 330 ns
+this queryid=7 cost: 322 ns
+this queryid=6 cost: 339 ns
+this queryid=7 cost: 1273 ns
+this queryid=4 cost: 1175 ns
+this queryid=6 cost: 306 ns
+this queryid=2 cost: 316 ns
+this queryid=5 cost: 330 ns
+this queryid=5 cost: 322 ns
+this queryid=6 cost: 324 ns
+this queryid=8 cost: 291 ns
+this queryid=2 cost: 310 ns
+this queryid=3 cost: 321 ns
+this queryid=3 cost: 294 ns
+this queryid=6 cost: 293 ns
+this queryid=8 cost: 3566 ns
 ```

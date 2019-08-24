@@ -21,7 +21,7 @@ func main() {
 	}
 
 	for i := 0; i < 10; i++ {
-		repo.Create(&userModel{
+		repo.Create(&UserModel{
 			Model: gorm.Model{
 				ID: uint(i + 1),
 			},
@@ -61,13 +61,14 @@ func prepareData() (*MysqlRepo, error) {
 		return nil, err
 	}
 
-	db.DropTableIfExists(&userModel{})
-	db.AutoMigrate(&userModel{})
+	db.DropTableIfExists(&UserModel{})
+	db.AutoMigrate(&UserModel{})
 
 	return NewMysqlRepo(db)
 }
 
-type userModel struct {
+// UserModel struct .
+type UserModel struct {
 	gorm.Model
 	Name     string `gorm:"column:name"`
 	Province string `gorm:"column:province"`
@@ -97,24 +98,24 @@ func NewMysqlRepo(db *gorm.DB) (*MysqlRepo, error) {
 }
 
 // Create .
-func (repo MysqlRepo) Create(m *userModel) error {
+func (repo MysqlRepo) Create(m *UserModel) error {
 	return repo.db.Create(m).Error
 }
 
 // GetByID .
-func (repo MysqlRepo) GetByID(id uint) (*userModel, error) {
+func (repo MysqlRepo) GetByID(id uint) (*UserModel, error) {
 	start := time.Now()
 	defer func() {
-		fmt.Printf("this query cost: %d nano seconds\n", time.Now().Sub(start).Nanoseconds())
+		fmt.Printf("this queryid=%d cost: %d ns\n", id, time.Now().Sub(start).Nanoseconds())
 	}()
 
 	v, ok := repo.calg.Get(id)
 	if ok {
-		return v.(*userModel), nil
+		return v.(*UserModel), nil
 	}
 
 	// actual find in DB
-	m := new(userModel)
+	m := new(UserModel)
 	if err := repo.db.Where("id = ?", id).First(m).Error; err != nil {
 		return nil, err
 	}
@@ -124,7 +125,7 @@ func (repo MysqlRepo) GetByID(id uint) (*userModel, error) {
 }
 
 // Update .
-func (repo MysqlRepo) Update(id uint, m *userModel) error {
+func (repo MysqlRepo) Update(id uint, m *UserModel) error {
 	if err := repo.db.Where("id = ?", id).Update(m).Error; err != nil {
 		return err
 	}
