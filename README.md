@@ -3,9 +3,11 @@ a basic repository to support cached data in memory and is based LRU-K cache rep
 
 ### TODOs
 
-[x] LRU-1 & LRU-K
-[x] Cached-Repository [demo](./examples/custom-cache-manage/main.go)
-[ ] concurrent safe
+* [x] LRU-1 & LRU-K
+
+* [x] Cached-Repository [demo](./examples/custom-cache-manage/main.go)
+
+* [ ] concurrent safe
 
 ### Demo
 
