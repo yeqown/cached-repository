@@ -16,6 +16,13 @@ var (
 	_ CacheAlgor = LRUCacheAlgor{}
 )
 
+// New .
+func New(c lru.Cache) CacheAlgor {
+	return LRUCacheAlgor{
+		c: c,
+	}
+}
+
 // LRUCacheAlgor .
 type LRUCacheAlgor struct {
 	c lru.Cache
