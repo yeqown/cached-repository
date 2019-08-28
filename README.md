@@ -7,7 +7,9 @@ a basic repository to support cached data in memory and is based LRU-K cache rep
 
 * [x] Cached-Repository [demo](./examples/custom-cache-manage/main.go)
 
-* [ ] concurrent safe
+* [x] `LRU-K` concurrent safe
+
+* [ ] `LRU-1` concurrent safe
 
 ### Demo
 
@@ -18,6 +20,7 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+	"sync"
 
 	cp "github.com/yeqown/cached-repository"
 	"github.com/yeqown/infrastructure/framework/gormic"
@@ -34,8 +37,11 @@ func main() {
 		panic(err)
 	}
 
+	wg := sync.WaitGroup{}
 	for i := 0; i < 10; i++ {
-		repo.Create(&userModel{
+		go func(){
+		wg.Add(1)
+			repo.Create(&userModel{
 			Model: gorm.Model{
 				ID: uint(i + 1),
 			},
@@ -43,28 +49,35 @@ func main() {
 			Province: fmt.Sprintf("province-%d", i+1),
 			City:     fmt.Sprintf("city-%d", i+1),
 		})
+		wg.Done()
+		}()
 	}
 
 	rand.Seed(time.Now().UnixNano())
 	for i := 0; i < 1000; i++ {
-		id := uint(rand.Intn(10))
-		if id == 0 {
-			continue
-		}
-
-		v, err := repo.GetByID(id)
-		if err != nil {
-			fmt.Printf("err: %d , %v\n", id, err)
-			continue
-		}
-
-		if v.ID != id ||
-			v.Name != fmt.Sprintf("name-%d", id) ||
-			v.Province != fmt.Sprintf("province-%d", id) ||
-			v.City != fmt.Sprintf("city-%d", id) {
-			fmt.Printf("err: not matched target with id[%d]: %v\n", v.ID, v)
-		}
+		go func() {
+			wg.Add(1)
+			id := uint(rand.Intn(10))
+			if id == 0 {
+				continue
+			}
+	
+			v, err := repo.GetByID(id)
+			if err != nil {
+				fmt.Printf("err: %d , %v\n", id, err)
+				continue
+			}
+	
+			if v.ID != id ||
+				v.Name != fmt.Sprintf("name-%d", id) ||
+				v.Province != fmt.Sprintf("province-%d", id) ||
+				v.City != fmt.Sprintf("city-%d", id) {
+				fmt.Printf("err: not matched target with id[%d]: %v\n", v.ID, v)
+			}
+			wg.Done()
+		}()
 	}
+	wg.Wait()
 }
 
 func prepareData() (*MysqlRepo, error) {

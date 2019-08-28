@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 
 	cp "github.com/yeqown/cached-repository"
@@ -19,7 +20,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	for i := 0; i < 10; i++ {
 		repo.Create(&UserModel{
 			Model: gorm.Model{
@@ -31,26 +31,32 @@ func main() {
 		})
 	}
 
+	wg := sync.WaitGroup{}
 	rand.Seed(time.Now().UnixNano())
 	for i := 0; i < 1000; i++ {
-		id := uint(rand.Intn(10))
-		if id == 0 {
-			continue
-		}
+		go func() {
+			wg.Add(1)
+			defer wg.Done()
+			id := uint(rand.Intn(10))
+			if id == 0 {
+				return
+			}
 
-		v, err := repo.GetByID(id)
-		if err != nil {
-			fmt.Printf("err: %d , %v\n", id, err)
-			continue
-		}
+			v, err := repo.GetByID(id)
+			if err != nil {
+				fmt.Printf("err: %d , %v\n", id, err)
+				return
+			}
 
-		if v.ID != id ||
-			v.Name != fmt.Sprintf("name-%d", id) ||
-			v.Province != fmt.Sprintf("province-%d", id) ||
-			v.City != fmt.Sprintf("city-%d", id) {
-			fmt.Printf("err: not matched target with id[%d]: %v\n", v.ID, v)
-		}
+			if v.ID != id ||
+				v.Name != fmt.Sprintf("name-%d", id) ||
+				v.Province != fmt.Sprintf("province-%d", id) ||
+				v.City != fmt.Sprintf("city-%d", id) {
+				fmt.Printf("err: not matched target with id[%d]: %v\n", v.ID, v)
+			}
+		}()
 	}
+	wg.Wait()
 }
 
 func prepareData() (*MysqlRepo, error) {

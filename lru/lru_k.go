@@ -3,6 +3,7 @@ package lru
 import (
 	"container/list"
 	"errors"
+	"sync"
 )
 
 var (
@@ -14,10 +15,12 @@ type K struct {
 	K       uint          // the K setting
 	onEvict EvictCallback // evict callback
 
+	hMutex       sync.RWMutex
 	hSize        uint                          // historyMax - used = historyRest
 	history      *list.List                    // history doubly linked list
 	historyItems map[interface{}]*list.Element // history get op O(1)
 
+	mutex      sync.RWMutex
 	size       uint                          // max - used = rest
 	cache      *list.List                    // cache doubly linked list, save
 	cacheItems map[interface{}]*list.Element // cache get op O(1)
@@ -37,9 +40,11 @@ func NewLRUK(k, size, hSize uint, onEvict EvictCallback) (*K, error) {
 	return &K{
 		K:            k,
 		onEvict:      onEvict,
+		hMutex:       sync.RWMutex{},
 		hSize:        hSize,
 		history:      list.New(),
 		historyItems: make(map[interface{}]*list.Element),
+		mutex:        sync.RWMutex{},
 		size:         size,
 		cache:        list.New(),
 		cacheItems:   make(map[interface{}]*list.Element),
@@ -48,6 +53,8 @@ func NewLRUK(k, size, hSize uint, onEvict EvictCallback) (*K, error) {
 
 // Put of K cache add or update
 func (c *K) Put(key, value interface{}) (evicted bool) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	if item, ok := c.cacheItems[key]; ok {
 		item.Value.(*entry).Value = value
 		c.cache.MoveToFront(item)
@@ -57,6 +64,8 @@ func (c *K) Put(key, value interface{}) (evicted bool) {
 	// fmt.Println(c.historyItems)
 	// not hit in cache, then add to history
 	var hEnt = new(historyEntry)
+	c.hMutex.Lock()
+	defer c.hMutex.Unlock()
 	item, ok := c.historyItems[key]
 	if ok {
 		hEnt = item.Value.(*historyEntry)
@@ -87,16 +96,22 @@ func (c *K) Put(key, value interface{}) (evicted bool) {
 
 // Get of K cache
 func (c *K) Get(key interface{}) (value interface{}, ok bool) {
+	c.mutex.Lock()
+	// defer c.mutex.Unlock()
 	// fmt.Println(c.cacheItems)
 	if item, ok := c.cacheItems[key]; ok {
 		c.cache.MoveToFront(item)
+		c.mutex.Unlock()
 		return item.Value.(*entry).Value, true
 	}
+	c.mutex.Unlock()
 	return nil, false
 }
 
 // Remove of K cache
 func (c *K) Remove(key interface{}) bool {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	if item, ok := c.cacheItems[key]; ok {
 		c.removeElement(item)
 		return true
@@ -106,6 +121,8 @@ func (c *K) Remove(key interface{}) bool {
 
 // Peek of K cache
 func (c *K) Peek(key interface{}) (value interface{}, ok bool) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 	var item *list.Element
 	if item, ok = c.cacheItems[key]; ok {
 		return item.Value.(*entry).Value, true
@@ -115,6 +132,8 @@ func (c *K) Peek(key interface{}) (value interface{}, ok bool) {
 
 // Oldest of K cache
 func (c *K) Oldest() (key, value interface{}, ok bool) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 	if c.cache == nil || c.cache.Len() == 0 {
 		return nil, nil, false
 	}
@@ -126,6 +145,8 @@ func (c *K) Oldest() (key, value interface{}, ok bool) {
 
 // Keys of K cache
 func (c *K) Keys() []interface{} {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 	keys := make([]interface{}, len(c.cacheItems))
 	i := 0
 	for item := c.cache.Back(); item != nil; item = item.Prev() {
@@ -137,6 +158,8 @@ func (c *K) Keys() []interface{} {
 
 // Len of K cache
 func (c *K) Len() int {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 	if c.cache == nil {
 		return 0
 	}
@@ -145,6 +168,8 @@ func (c *K) Len() int {
 
 // Iter of K cache
 func (c *K) Iter(f IterFunc) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 	for item := c.cache.Back(); item != nil; item = item.Prev() {
 		ent := item.Value.(*entry)
 		f(ent.Key, ent.Value)
@@ -153,6 +178,7 @@ func (c *K) Iter(f IterFunc) {
 
 // Purge of K cache
 func (c *K) Purge() {
+	c.mutex.Lock()
 	for k, v := range c.cacheItems {
 		if c.onEvict != nil {
 			c.onEvict(k, v.Value.(*entry).Value)
@@ -160,11 +186,14 @@ func (c *K) Purge() {
 		delete(c.cacheItems, k)
 	}
 	c.cache.Init()
+	c.mutex.Unlock()
 
+	c.hMutex.Lock()
 	for k := range c.historyItems {
 		delete(c.historyItems, k)
 	}
 	c.history.Init()
+	c.hMutex.Unlock()
 }
 
 func (c *K) removeHistoryElement(item *list.Element) {
