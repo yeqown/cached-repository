@@ -7,7 +7,17 @@ import (
 )
 
 var (
-	_ Cache = &K{}
+	_          Cache = &K{}
+	hentryPool       = sync.Pool{
+		New: func() interface{} {
+			return new(historyEntry)
+		},
+	}
+	entryPool = sync.Pool{
+		New: func() interface{} {
+			return new(entry)
+		},
+	}
 )
 
 // K . means lru-k
@@ -63,7 +73,8 @@ func (c *K) Put(key, value interface{}) (evicted bool) {
 
 	// fmt.Println(c.historyItems)
 	// not hit in cache, then add to history
-	var hEnt = new(historyEntry)
+	// var hEnt = new(historyEntry)
+	var hEnt = hentryPool.Get().(*historyEntry)
 	c.hMutex.Lock()
 	defer c.hMutex.Unlock()
 	item, ok := c.historyItems[key]
@@ -76,7 +87,11 @@ func (c *K) Put(key, value interface{}) (evicted bool) {
 		if hEnt.Visited >= c.K {
 			// true: move from history into cache
 			c.removeHistoryElement(item)
-			return c.addElement(&entry{Key: key, Value: value})
+
+			entry := entryPool.Get().(*entry)
+			entry.Key = key
+			entry.Value = value
+			return c.addElement(entry)
 		}
 		// refresh history order
 		c.history.MoveToFront(item)
@@ -199,6 +214,7 @@ func (c *K) Purge() {
 func (c *K) removeHistoryElement(item *list.Element) {
 	c.hSize++
 	ent := item.Value.(*historyEntry)
+	hentryPool.Put(ent)
 	c.history.Remove(item)
 	delete(c.historyItems, ent.Key)
 }
@@ -208,14 +224,17 @@ func (c *K) addHistoryElement(hEnt *historyEntry) *list.Element {
 		c.removeHistoryElement(c.history.Back())
 	}
 	c.hSize--
-	item := c.history.PushFront(hEnt)
-	c.historyItems[hEnt.Key] = item
-	return item
+	// item := c.history.PushFront(hEnt)
+	// c.historyItems[hEnt.Key] = item
+	// return item
+	c.historyItems[hEnt.Key] = c.history.PushFront(hEnt)
+	return c.historyItems[hEnt.Key]
 }
 
 func (c *K) removeElement(item *list.Element) {
 	c.size++
 	ent := item.Value.(*entry)
+	entryPool.Put(ent)
 	c.cache.Remove(item)
 	delete(c.cacheItems, ent.Key)
 	if c.onEvict != nil {
